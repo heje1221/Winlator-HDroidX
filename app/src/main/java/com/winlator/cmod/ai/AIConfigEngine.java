@@ -4,6 +4,11 @@ import android.app.ActivityManager;
 import android.content.Context;
 import android.os.Build;
 
+import com.winlator.cmod.contents.AdrenotoolsManager;
+import com.winlator.cmod.core.DefaultVersion;
+import com.winlator.cmod.core.GPUInformation;
+
+import java.util.List;
 import java.util.Locale;
 
 public class AIConfigEngine {
@@ -61,6 +66,8 @@ public class AIConfigEngine {
         public boolean showFPS;
         public String notes;
         public String summary;
+        public boolean graphicsDriverInstalled;
+        public String gpuGeneration = "a7xx";
     }
 
     private static final String[][] SOC_TABLE = {
@@ -166,6 +173,44 @@ public class AIConfigEngine {
         return new String[]{"Unknown SoC", "mid"};
     }
 
+    public static String gpuGeneration(String gpuFamily, String socModel) {
+        if (!"adreno".equals(gpuFamily)) return "";
+        String m = socModel == null ? "" : socModel.toLowerCase();
+        if (m.startsWith("sm8") || m.startsWith("a8")) return "a8xx";
+        if (m.startsWith("sm7") || m.startsWith("a7")) return "a7xx";
+        if (m.startsWith("sm6") || m.startsWith("a6")) return "a6xx";
+        return "a7xx";
+    }
+
+    public static String resolveInstalledDriver(Context context, String gpuFamily, String gpuGeneration) {
+        if (!"adreno".equals(gpuFamily)) return "";
+        List<String> installed = null;
+        try {
+            installed = new AdrenotoolsManager(context).enumarateInstalledDrivers();
+        } catch (Throwable t) {
+            t.printStackTrace();
+        }
+        if (installed != null) {
+            if ("a8xx".equals(gpuGeneration)) {
+                for (String id : installed) {
+                    if (id.toLowerCase().contains("8")) return id;
+                }
+            }
+            for (String id : installed) {
+                String lower = id.toLowerCase();
+                if (lower.contains("turn")) return id;
+            }
+            if (!installed.isEmpty()) return installed.get(0);
+        }
+        try {
+            if (GPUInformation.isDriverSupported(DefaultVersion.WRAPPER_ADRENO, context))
+                return DefaultVersion.WRAPPER_ADRENO;
+        } catch (Throwable t) {
+            t.printStackTrace();
+        }
+        return "";
+    }
+
     private static int deviceScore(String tier) {
         switch (tier) {
             case "low": return 1;
@@ -224,6 +269,7 @@ public class AIConfigEngine {
     public static Recommendation recommend(DeviceSpec spec, Game game) {
         Recommendation rec = new Recommendation();
         rec.notes = game.notes;
+        rec.gpuGeneration = gpuGeneration(spec.gpuFamily, spec.socModel);
 
         if (game.resolution != null) {
             rec.resolution = game.resolution;
@@ -244,10 +290,17 @@ public class AIConfigEngine {
 
         if ("adreno".equals(spec.gpuFamily)) {
             rec.graphicsDriverVersion = ADRENO_DRIVER_VERSION;
+            rec.graphicsDriverInstalled = false;
         } else {
             rec.graphicsDriverVersion = "";
+            rec.graphicsDriverInstalled = true;
         }
 
+        return finishRecommendation(rec, spec, game, dxvkVersion, vkd3dVersion);
+    }
+
+    private static Recommendation finishRecommendation(Recommendation rec, DeviceSpec spec, Game game,
+                                                      String dxvkVersion, String vkd3dVersion) {
         if ("heavy".equals(game.tier)) {
             rec.box64Preset = "STABILITY";
             rec.box64Name = "Stability";
@@ -267,10 +320,13 @@ public class AIConfigEngine {
 
         StringBuilder sb = new StringBuilder();
         sb.append("Device: ").append(spec.socName).append(" (").append(spec.socTier).append(" tier)\n");
-        sb.append("GPU: ").append(spec.gpuFamily).append(" | RAM: ").append(spec.ramMb).append(" MB | Cores: ").append(spec.cores).append("\n\n");
+        sb.append("GPU: ").append(spec.gpuFamily);
+        if (!rec.gpuGeneration.isEmpty()) sb.append(" ").append(rec.gpuGeneration);
+        sb.append(" | RAM: ").append(spec.ramMb).append(" MB | Cores: ").append(spec.cores).append("\n\n");
         sb.append("GAME: ").append(game.name).append("\n");
         sb.append("Resolution: ").append(rec.resolution).append("\n");
-        sb.append("Graphics driver: ").append(rec.graphicsDriverVersion.isEmpty() ? "system/virgl" : rec.graphicsDriverVersion).append("\n");
+        sb.append("Graphics driver: ").append(rec.graphicsDriverVersion.isEmpty() ? "system/virgl" : rec.graphicsDriverVersion);
+        sb.append(rec.graphicsDriverInstalled ? " (installed)" : " (NOT installed)").append("\n");
         sb.append("DX wrapper: ").append(rec.dxWrapper).append(" (DXVK ").append(dxvkVersion);
         if (!"None".equals(vkd3dVersion)) sb.append(" + VKD3D ").append(vkd3dVersion);
         sb.append(")\n");
@@ -280,6 +336,19 @@ public class AIConfigEngine {
         if (rec.notes != null) sb.append("\nNote: ").append(rec.notes);
 
         rec.summary = sb.toString();
+        return rec;
+    }
+
+    public static Recommendation recommend(Context context, DeviceSpec spec, Game game) {
+        Recommendation rec = recommend(spec, game);
+        if ("adreno".equals(spec.gpuFamily)) {
+            String installed = resolveInstalledDriver(context, spec.gpuFamily, rec.gpuGeneration);
+            if (installed != null && !installed.isEmpty()) {
+                rec.graphicsDriverVersion = installed;
+                rec.graphicsDriverInstalled = true;
+                rec.summary = rec.summary.replace("(NOT installed)", "(installed)");
+            }
+        }
         return rec;
     }
 

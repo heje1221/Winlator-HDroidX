@@ -117,7 +117,7 @@ public class RepositoryManagerDialog {
     }
 
     public static DriverRepo getStevenMxzRepo() {
-        return new DriverRepo("StevenMXZ Turnip Drivers", "https://api.github.com/repos/StevenMXZ/freedreno_turnip-CI/releases");
+        return new DriverRepo("StevenMXZ Turnip Drivers", "https://api.github.com/repos/StevenMXZ/Adreno-Tools-Drivers/releases");
     }
 
     public static List<DriverRepo> loadDriverRepos(Context context, int limit) {

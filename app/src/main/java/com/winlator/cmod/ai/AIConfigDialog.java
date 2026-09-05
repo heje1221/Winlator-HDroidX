@@ -11,7 +11,6 @@ import com.winlator.cmod.contentdialog.ContentDialog;
 import com.winlator.cmod.contentdialog.DriverDownloadDialog;
 import com.winlator.cmod.contentdialog.RepositoryManagerDialog;
 import com.winlator.cmod.core.AppUtils;
-import com.winlator.cmod.core.GPUInformation;
 
 public class AIConfigDialog extends ContentDialog {
 
@@ -80,15 +79,14 @@ public class AIConfigDialog extends ContentDialog {
 
     private void updateSummary(int position) {
         AIConfigEngine.Game game = AIConfigEngine.GAMES[position];
-        lastRec = AIConfigEngine.recommend(spec, game);
+        lastRec = AIConfigEngine.recommend(context, spec, game);
         AIConfigEngine.tuneFromProfile(lastRec, aiProfile);
 
         TextView summaryText = findViewById(R.id.TVAIRecSummary);
         summaryText.setText(lastRec.summary);
 
-        if (!lastRec.graphicsDriverVersion.isEmpty()
-                && !GPUInformation.isDriverSupported(lastRec.graphicsDriverVersion, context)) {
-            promptText.setText("Recommended driver not installed yet. Apply first, then download it:\n-> Container Edit > Drivers tab > Turnip drivers.");
+        if (!lastRec.graphicsDriverVersion.isEmpty() && !lastRec.graphicsDriverInstalled) {
+            promptText.setText("Click APPLY to auto-download + install the required driver, then launch.");
             promptText.setVisibility(android.view.View.VISIBLE);
         } else {
             promptText.setVisibility(android.view.View.GONE);
@@ -96,6 +94,37 @@ public class AIConfigDialog extends ContentDialog {
     }
 
     private void applyConfig() {
+        if (lastRec == null) return;
+
+        boolean driverNeeded = !lastRec.graphicsDriverVersion.isEmpty();
+        boolean driverReady = driverNeeded && lastRec.graphicsDriverInstalled;
+
+        if (driverNeeded && !driverReady) {
+            dismiss();
+            DriverDownloadDialog driverDialog = new DriverDownloadDialog(context,
+                    RepositoryManagerDialog.getStevenMxzRepo().apiUrl);
+            driverDialog.autoInstall(lastRec.graphicsDriverVersion, lastRec.gpuGeneration);
+            driverDialog.setOnDismissCallback(() -> {
+                String installed = driverDialog.getInstalledDriverName();
+                if (installed != null && !installed.isEmpty()) {
+                    lastRec.graphicsDriverVersion = installed;
+                    lastRec.graphicsDriverInstalled = true;
+                    applyNow();
+                    AppUtils.showToast(getContext(),
+                            "Driver installed: " + installed + ". AI Config applied!");
+                } else {
+                    AppUtils.showToast(getContext(),
+                            "Driver install failed. Check connection or pick manually.");
+                }
+            });
+            driverDialog.show();
+            return;
+        }
+
+        applyNow();
+    }
+
+    private void applyNow() {
         if (lastRec == null) return;
 
         // Per-shortcut overrides (Extra Data in the .desktop file)
@@ -117,14 +146,6 @@ public class AIConfigDialog extends ContentDialog {
 
         AppUtils.showToast(getContext(),
                 "AI Config applied: " + lastRec.resolution + " | " + lastRec.cpuList + " | " + lastRec.box64Name);
-
-        if (!lastRec.graphicsDriverVersion.isEmpty()
-                && !GPUInformation.isDriverSupported(lastRec.graphicsDriverVersion, context)) {
-            dismiss();
-            DriverDownloadDialog driverDialog = new DriverDownloadDialog(context,
-                    RepositoryManagerDialog.getStevenMxzRepo().apiUrl);
-            driverDialog.show();
-        }
     }
 
     private String setDriverVersion(String config, String version) {
