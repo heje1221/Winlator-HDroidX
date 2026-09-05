@@ -63,7 +63,7 @@ static char *get_driver_path(JNIEnv *env, jobject context, const char *driver_na
 }
 
 static char *get_library_name(JNIEnv *env, jobject context, const char *driver_name) {
-    char *library_name;
+    char *library_name = NULL;
 
     jclass adrenotoolsManager = (*env)->FindClass(env, "com/winlator/cmod/contents/AdrenotoolsManager");
     jmethodID constructor = (*env)->GetMethodID(env, adrenotoolsManager, "<init>", "(Landroid/content/Context;)V");
@@ -71,6 +71,11 @@ static char *get_library_name(JNIEnv *env, jobject context, const char *driver_n
     jmethodID getLibraryName = (*env)->GetMethodID(env, adrenotoolsManager, "getLibraryName","(Ljava/lang/String;)Ljava/lang/String;");
     jstring driverName = (*env)->NewStringUTF(env, driver_name);
     jstring libraryName = (jstring)(*env)->CallObjectMethod(env, adrenotoolsManagerObj,getLibraryName, driverName);
+
+    if ((*env)->ExceptionCheck(env)) {
+        (*env)->ExceptionClear(env);
+        return NULL;
+    }
 
     if (libraryName)
         library_name = (char *)(*env)->GetStringUTFChars(env, libraryName, NULL);
