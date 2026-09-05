@@ -1,7 +1,12 @@
 name: Android CI Bionic
 
 on:
+  push:
+    branches: [ "hdroidx" ]
   workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   build:

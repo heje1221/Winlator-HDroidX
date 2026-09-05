@@ -49,6 +49,8 @@ import androidx.drawerlayout.widget.DrawerLayout;
 import androidx.preference.PreferenceManager;
 
 import com.google.android.material.navigation.NavigationView;
+
+import com.winlator.cmod.ai.AIProfile;
 import com.winlator.cmod.container.Container;
 import com.winlator.cmod.container.ContainerManager;
 import com.winlator.cmod.container.Shortcut;
@@ -147,6 +149,7 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
     private FrameRating frameRating = null;
     private Runnable editInputControlsCallback;
     private Shortcut shortcut;
+    private AIProfile aiProfile;
     private String graphicsDriver = Container.DEFAULT_GRAPHICS_DRIVER;
     private HashMap<String, String> graphicsDriverConfig;
     private String audioDriver = Container.DEFAULT_AUDIO_DRIVER;
@@ -409,6 +412,8 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
 
         if (shortcutPath != null && !shortcutPath.isEmpty()) {
             shortcut = new Shortcut(container, new File(shortcutPath));
+            aiProfile = AIProfile.forShortcut(this, shortcut, container);
+            if (aiProfile != null) aiProfile.beginRun();
         }
 
         taskAffinityMask = (short) ProcessHelper.getAffinityMask(container.getCPUList(true));
@@ -784,6 +789,7 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
     }
 
     private void exit() {
+        if (aiProfile != null) aiProfile.endRun();
         NotificationManagerCompat.from(this).cancel(NOTIFICATION_ID);
         preloaderDialog.showOnUiThread(R.string.shutdown);
         handler.postDelayed(new Runnable() {
@@ -1128,7 +1134,10 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
 
         // Pass final envVars to the launcher
         guestProgramLauncherComponent.setEnvVars(envVars);
-        guestProgramLauncherComponent.setTerminationCallback((status) -> exit());
+        guestProgramLauncherComponent.setTerminationCallback((status) -> {
+            if (aiProfile != null && status != 0) aiProfile.markCrashed();
+            exit();
+        });
 
         // Add the launcher to our environment
         environment.addComponent(guestProgramLauncherComponent);
@@ -1191,6 +1200,7 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
 
         if (container != null && container.isShowFPS()) {
             frameRating = new FrameRating(this, graphicsDriverConfig);
+            if (aiProfile != null) frameRating.setAIProfile(aiProfile);
             frameRating.setVisibility(View.GONE);
             rootView.addView(frameRating);
         }

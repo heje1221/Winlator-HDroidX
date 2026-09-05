@@ -40,6 +40,7 @@ import com.winlator.cmod.R;
 import com.winlator.cmod.container.Container;
 import com.winlator.cmod.container.ContainerManager;
 import com.winlator.cmod.container.Shortcut;
+import com.winlator.cmod.ai.AIConfigDialog;
 import com.winlator.cmod.contentdialog.ContentDialog;
 import com.winlator.cmod.contentdialog.ShortcutSettingsDialog;
 import com.winlator.cmod.contents.ContentsManager;
@@ -168,7 +169,10 @@ public class ShortcutsFragment extends Fragment {
             listItemMenu.inflate(R.menu.shortcut_popup_menu);
             listItemMenu.setOnMenuItemClickListener((menuItem) -> {
                 int itemId = menuItem.getItemId();
-                if (itemId == R.id.shortcut_settings) {
+                if (itemId == R.id.shortcut_ai_config) {
+                    (new AIConfigDialog(context, shortcut)).show();
+                }
+                else if (itemId == R.id.shortcut_settings) {
                     (new ShortcutSettingsDialog(ShortcutsFragment.this, shortcut)).show();
                 }
                 else if (itemId == R.id.shortcut_remove) {

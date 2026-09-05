@@ -15,6 +15,7 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import com.winlator.cmod.R;
+import com.winlator.cmod.ai.AIProfile;
 import com.winlator.cmod.container.Container;
 import com.winlator.cmod.container.Shortcut;
 import com.winlator.cmod.core.GPUInformation;
@@ -47,6 +48,11 @@ public class FrameRating extends FrameLayout implements Runnable {
     private String prefsKey;
     private float lastX, lastY;
     private boolean isDragging = false;
+    private AIProfile aiProfile = null;
+
+    public void setAIProfile(AIProfile aiProfile) {
+        this.aiProfile = aiProfile;
+    }
 
     // Элементы для строк (чтобы скрывать всю строку)
     private LinearLayout fpsRow;
@@ -687,6 +693,7 @@ public class FrameRating extends FrameLayout implements Runnable {
         long time = SystemClock.elapsedRealtime();
         if (time >= lastTime + 500) {
             lastFPS = ((float)(frameCount * 1000) / (time - lastTime));
+            if (aiProfile != null) aiProfile.addFpsSample(lastFPS);
             post(this);
             lastTime = time;
             frameCount = 0;

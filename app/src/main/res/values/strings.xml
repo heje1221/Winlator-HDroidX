@@ -90,9 +90,11 @@
     <string name="background_transparency">Background</string>
     <string name="text_transparency">Text</string>
     <string name="wine_dxvk">Wine/DXVK</string>
-    <string name="app_name">Winlator</string>
+    <string name="app_name">Winlator HDroidX</string>
     <string name="run">Run</string>
     <string name="edit">Edit</string>
+    <string name="ai_config">AI Config</string>
+    <string name="ai_config_game">Game / Workload</string>
     <string name="remove">Remove</string>
     <string name="add">Add</string>
     <string name="shortcuts">Shortcuts</string>
