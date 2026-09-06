@@ -403,6 +403,8 @@ public class DriverDownloadDialog {
             
             
             holder.title.setText(item.name);
+            holder.title.setTextColor(Color.WHITE);
+            holder.subtitle.setTextColor(Color.parseColor("#AAAAAA"));
             
             
             if (item.assets.size() > 1) {

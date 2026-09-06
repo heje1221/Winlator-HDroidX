@@ -171,7 +171,8 @@ public class RepositoryManagerDialog {
         public void onBindViewHolder(ViewHolder holder, int position) {
             DriverRepo repo = repos.get(position);
             holder.title.setText(repo.name);
-            holder.subtitle.setText(repo.apiUrl);
+            holder.title.setTextColor(Color.WHITE);
+            holder.subtitle.setTextColor(Color.parseColor("#AAAAAA"));
             
             
             holder.actionButton.setImageResource(android.R.drawable.ic_menu_manage);
