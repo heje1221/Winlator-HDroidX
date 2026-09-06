@@ -190,7 +190,8 @@ public class DriverDownloadDialog {
                 e.printStackTrace();
             }
 
-            if (best == null) {
+            ReleaseItem selected = best;
+            if (selected == null) {
                 runOnUi(() -> {
                     hideProgress();
                     dialog.dismiss();
@@ -199,12 +200,12 @@ public class DriverDownloadDialog {
                 return;
             }
 
-            DriverAsset asset = pickAsset(best);
+            DriverAsset asset = pickAsset(selected);
             if (asset == null) {
                 runOnUi(() -> {
                     hideProgress();
                     dialog.dismiss();
-                    Toast.makeText(context, "No downloadable asset for " + best.name, Toast.LENGTH_LONG).show();
+                    Toast.makeText(context, "No downloadable asset for " + selected.name, Toast.LENGTH_LONG).show();
                 });
                 return;
             }
