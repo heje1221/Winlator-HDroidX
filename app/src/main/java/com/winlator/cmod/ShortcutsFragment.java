@@ -41,6 +41,8 @@ import com.winlator.cmod.container.ContainerManager;
 import com.winlator.cmod.container.Shortcut;
 import com.winlator.cmod.ai.AIConfigDialog;
 import com.winlator.cmod.contentdialog.ContentDialog;
+import com.winlator.cmod.contentdialog.DriverDownloadDialog;
+import com.winlator.cmod.contentdialog.RepositoryManagerDialog;
 import com.winlator.cmod.contentdialog.ShortcutSettingsDialog;
 import com.winlator.cmod.core.FileUtils;
 
@@ -164,6 +166,18 @@ public class ShortcutsFragment extends Fragment {
                 int itemId = menuItem.getItemId();
                 if (itemId == R.id.shortcut_ai_config) {
                     (new AIConfigDialog(context, shortcut)).show();
+                }
+                else if (itemId == R.id.shortcut_driver_download) {
+                    DriverDownloadDialog driverDialog = new DriverDownloadDialog(context,
+                            RepositoryManagerDialog.getStevenMxzRepo().apiUrl);
+                    driverDialog.setOnDismissCallback(() -> {
+                        String installed = driverDialog.getInstalledDriverName();
+                        if (installed != null && !installed.isEmpty()) {
+                            Toast.makeText(context, "Driver installed: " + installed, Toast.LENGTH_LONG).show();
+                            loadShortcutsList();
+                        }
+                    });
+                    driverDialog.show();
                 }
                 else if (itemId == R.id.shortcut_settings) {
                     (new ShortcutSettingsDialog(ShortcutsFragment.this, shortcut)).show();

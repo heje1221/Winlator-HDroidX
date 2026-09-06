@@ -39,4 +39,11 @@
         android:layout_height="wrap_content"
         android:textSize="13sp"
         android:paddingTop="8dp" />
+
+    <Button
+        android:id="@+id/BTDriverDownload"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:text="@string/ai_config_download_drivers" />
 </LinearLayout>

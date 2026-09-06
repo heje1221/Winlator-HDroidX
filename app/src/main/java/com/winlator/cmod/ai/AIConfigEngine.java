@@ -5,6 +5,8 @@ import android.content.Context;
 import android.os.Build;
 
 import com.winlator.cmod.contents.AdrenotoolsManager;
+import com.winlator.cmod.contents.ContentProfile;
+import com.winlator.cmod.contents.ContentsManager;
 import com.winlator.cmod.core.DefaultVersion;
 import com.winlator.cmod.core.GPUInformation;
 
@@ -60,6 +62,8 @@ public class AIConfigEngine {
         public String graphicsDriverVersion;
         public String dxWrapper;
         public String dxWrapperConfig;
+        public String dxvkVersion;
+        public String vkd3dVersion;
         public String box64Preset;
         public String box64Name;
         public String cpuList;
@@ -67,6 +71,7 @@ public class AIConfigEngine {
         public String notes;
         public String summary;
         public boolean graphicsDriverInstalled;
+        public boolean dxWrapperReady = true;
         public String gpuGeneration = "a7xx";
     }
 
@@ -201,15 +206,14 @@ public class AIConfigEngine {
             t.printStackTrace();
         }
         if (installed != null) {
-            if ("a8xx".equals(gpuGeneration)) {
-                for (String id : installed) {
-                    if (id.toLowerCase().contains("8")) return id;
-                }
-            }
+            String best = "";
             for (String id : installed) {
                 String lower = id.toLowerCase();
-                if (lower.contains("turn")) return id;
+                if (!(lower.contains("turn") || lower.contains("mesa") || lower.contains("freedreno"))) continue;
+                if ("a8xx".equals(gpuGeneration) && !lower.contains("8")) continue;
+                if (best.isEmpty() || compareVersions(id, best) > 0) best = id;
             }
+            if (!best.isEmpty()) return best;
             if (!installed.isEmpty()) return installed.get(0);
         }
         try {
@@ -247,18 +251,16 @@ public class AIConfigEngine {
         return sb.toString();
     }
 
-    private static String pickDXVKVersion(Game game, DeviceSpec spec) {
+    private static String defaultDXVKVersion(Game game, DeviceSpec spec) {
         String baseVersion = game.dxvkVersion != null ? game.dxvkVersion : "2.3.1";
         boolean lowEnd = "mid".equals(spec.socTier) || "low".equals(spec.socTier);
-        boolean isARM64EC = false;
-        String requested = baseVersion + (isARM64EC ? "-arm64ec-gplasync" : "");
         if (lowEnd && baseVersion.startsWith("2.") && !"heavy".equals(game.tier)) {
             return "1.10.3";
         }
-        return requested;
+        return baseVersion;
     }
 
-    private static String pickVKD3DVersion(Game game, DeviceSpec spec) {
+    private static String defaultVKD3DVersion(Game game, DeviceSpec spec) {
         String baseVersion = game.vkd3dVersion != null ? game.vkd3dVersion : "None";
         if ("None".equals(baseVersion)) return "None";
         boolean lowEnd = "mid".equals(spec.socTier) || "low".equals(spec.socTier);
@@ -266,9 +268,35 @@ public class AIConfigEngine {
         return baseVersion;
     }
 
+    public static String pickInstalledVersion(Context context, ContentProfile.ContentType type) {
+        try {
+            ContentsManager cm = new ContentsManager(context);
+            cm.syncContents();
+            List<ContentProfile> list = cm.getProfiles(type);
+            ContentProfile best = null;
+            if (list != null) {
+                for (ContentProfile p : list) {
+                    if (best == null || entryRank(p) > entryRank(best)) best = p;
+                }
+            }
+            if (best != null) return best.verName + "-" + best.verCode;
+        } catch (Throwable t) {
+            t.printStackTrace();
+        }
+        return null;
+    }
+
+    private static int entryRank(ContentProfile p) {
+        String n = p.verName == null ? "" : p.verName.toLowerCase(Locale.ROOT);
+        int score = Math.max(0, p.verCode) * 2;
+        if (n.contains("arm64ec")) score += 30;
+        if (n.contains("gplasync") || n.contains("async")) score += 10;
+        return score;
+    }
+
     private static String buildDXWrapperConfig(String dxvkVersion, String vkd3dVersion) {
         return "version=" + dxvkVersion
-                + ",framerate=0,async=0,asyncCache=0"
+                + ",framerate=0,async=1,asyncCache=1"
                 + ",vkd3dVersion=" + vkd3dVersion
                 + ",vkd3dLevel=12_1"
                 + ",ddrawrapper=None,csmt=3"
@@ -277,6 +305,176 @@ public class AIConfigEngine {
     }
 
     public static Recommendation recommend(DeviceSpec spec, Game game) {
+        return buildRecommendation(spec, game,
+                defaultDXVKVersion(game, spec), defaultVKD3DVersion(game, spec));
+    }
+
+    public static Recommendation recommend(Context context, DeviceSpec spec, Game game) {
+        String dxvkVersion = pickInstalledVersion(context, ContentProfile.ContentType.CONTENT_TYPE_DXVK);
+        if (dxvkVersion == null) dxvkVersion = defaultDXVKVersion(game, spec);
+        String vkd3dVersion = pickInstalledVersion(context, ContentProfile.ContentType.CONTENT_TYPE_VKD3D);
+        if (vkd3dVersion == null) vkd3dVersion = defaultVKD3DVersion(game, spec);
+
+        Recommendation rec = buildRecommendation(spec, game, dxvkVersion, vkd3dVersion);
+        rec.dxvkVersion = dxvkVersion;
+        rec.vkd3dVersion = vkd3dVersion;
+
+        rec.dxWrapperReady = isContentAvailable(context,
+                ContentProfile.ContentType.CONTENT_TYPE_DXVK, dxvkVersion)
+                && ("None".equals(vkd3dVersion)
+                || isContentAvailable(context, ContentProfile.ContentType.CONTENT_TYPE_VKD3D, vkd3dVersion));
+        if (!rec.dxWrapperReady) {
+            rec.summary += "\nDX wrapper (DXVK/VKD3D) not installed - will auto-download the best version on Apply.";
+        }
+
+        if ("adreno".equals(spec.gpuFamily)) {
+            String installed = resolveInstalledDriver(context, spec.gpuFamily, rec.gpuGeneration);
+            rec.graphicsDriverVersion = ADRENO_DRIVER_VERSION;
+            rec.graphicsDriverInstalled = installedDriverReady(installed, ADRENO_DRIVER_VERSION);
+            rec.summary = rec.summary.replace("(NOT installed)",
+                    rec.graphicsDriverInstalled ? "(installed)" : "(NOT installed - auto-download on Apply)");
+        }
+        return rec;
+    }
+
+    public static boolean isContentAvailable(Context context, ContentProfile.ContentType type, String version) {
+        if (version == null || version.isEmpty()) return false;
+        try {
+            ContentsManager cm = new ContentsManager(context);
+            cm.syncContents();
+            List<ContentProfile> list = cm.getProfiles(type);
+            if (list != null) {
+                for (ContentProfile p : list) {
+                    String entry = ContentsManager.getEntryName(p);
+                    String suffix = entry.substring(entry.indexOf('-') + 1);
+                    if (suffix.equals(version) || p.verName.equals(version)) return true;
+                }
+            }
+        } catch (Throwable t) {
+            t.printStackTrace();
+        }
+        return isBundledWrapper(context, type, version);
+    }
+
+    public static boolean isBundledWrapper(Context context, ContentProfile.ContentType type, String version) {
+        try {
+            String asset = type == ContentProfile.ContentType.CONTENT_TYPE_DXVK
+                    ? "dxwrapper/dxvk-" + version + ".tzst"
+                    : "dxwrapper/vkd3d-" + version + ".tzst";
+            context.getAssets().open(asset).close();
+            return true;
+        } catch (Throwable t) {
+            return false;
+        }
+    }
+
+    public interface OnContentInstalledCallback {
+        void onInstalled(boolean success, String message);
+    }
+
+    public static void autoInstallContent(Context context, ContentProfile.ContentType type, String version,
+                                          OnContentInstalledCallback callback) {
+        new Thread(() -> {
+            try {
+                ContentsManager manager = new ContentsManager(context);
+                manager.syncContents();
+
+                String json = com.winlator.cmod.contents.Downloader.downloadString(ContentsManager.REMOTE_PROFILES);
+                if (json == null) {
+                    if (callback != null) callback.onInstalled(false, "Failed to fetch content list (network)");
+                    return;
+                }
+                manager.setRemoteProfiles(json);
+
+                ContentProfile target = null;
+                List<ContentProfile> list = manager.getProfiles(type);
+                if (list != null) {
+                    for (ContentProfile p : list) {
+                        if (p.remoteUrl == null) continue;
+                        String entry = ContentsManager.getEntryName(p);
+                        String suffix = entry.substring(entry.indexOf('-') + 1);
+                        if (suffix.startsWith(version + "-") || suffix.equals(version)) {
+                            if (target == null || entryRank(p) > entryRank(target)) target = p;
+                        }
+                    }
+                }
+                if (target == null) {
+                    if (callback != null) callback.onInstalled(false, "No remote profile for " + type + " " + version);
+                    return;
+                }
+
+                final ContentProfile profile = target;
+                java.io.File out = new java.io.File(context.getCacheDir(),
+                        "ai_" + type.toString() + "_" + version + ".tmp");
+                if (!com.winlator.cmod.contents.Downloader.downloadFile(profile.remoteUrl, out)) {
+                    if (callback != null) callback.onInstalled(false, "Download failed");
+                    return;
+                }
+
+                manager.extraContentFile(android.net.Uri.fromFile(out), new ContentsManager.OnInstallFinishedCallback() {
+                    @Override
+                    public void onFailed(ContentsManager.InstallFailedReason reason, Exception e) {
+                        if (callback != null) callback.onInstalled(false, "Extract failed: " + reason);
+                    }
+
+                    @Override
+                    public void onSucceed(ContentProfile extracted) {
+                        manager.finishInstallContent(extracted, new ContentsManager.OnInstallFinishedCallback() {
+                            @Override
+                            public void onFailed(ContentsManager.InstallFailedReason reason, Exception e) {
+                                if (callback != null) callback.onInstalled(false, "Install failed: " + reason);
+                            }
+
+                            @Override
+                            public void onSucceed(ContentProfile inst) {
+                                manager.syncContents();
+                                if (callback != null) callback.onInstalled(true, inst.verName);
+                            }
+                        });
+                    }
+                });
+            } catch (Throwable t) {
+                t.printStackTrace();
+                if (callback != null) callback.onInstalled(false, "Error: " + t.getMessage());
+            }
+        }).start();
+    }
+
+    public static boolean installedDriverReady(String installedDriverName, String targetVersion) {
+        if (installedDriverName == null || installedDriverName.isEmpty()) return false;
+        String lower = installedDriverName.toLowerCase(Locale.ROOT);
+        if (!(lower.contains("turnip") || lower.contains("mesa") || lower.contains("freedreno"))) return false;
+        return compareVersions(installedDriverName, targetVersion) >= 0;
+    }
+
+    private static int compareVersions(String a, String b) {
+        int[] va = parseVersion(a);
+        int[] vb = parseVersion(b);
+        for (int i = 0; i < 3; i++) {
+            if (va[i] != vb[i]) return Integer.compare(va[i], vb[i]);
+        }
+        return 0;
+    }
+
+    private static int[] parseVersion(String s) {
+        int[] out = new int[3];
+        if (s == null) return out;
+        int idx = 0;
+        StringBuilder num = new StringBuilder();
+        for (int i = 0; i < s.length() && idx < 3; i++) {
+            char c = s.charAt(i);
+            if (Character.isDigit(c)) {
+                num.append(c);
+            } else if (num.length() > 0) {
+                out[idx++] = Integer.parseInt(num.toString());
+                num.setLength(0);
+            }
+        }
+        if (num.length() > 0 && idx < 3) out[idx] = Integer.parseInt(num.toString());
+        return out;
+    }
+
+    private static Recommendation buildRecommendation(DeviceSpec spec, Game game, String dxvkVersion, String vkd3dVersion) {
         Recommendation rec = new Recommendation();
         rec.notes = game.notes;
         rec.gpuGeneration = gpuGeneration(spec.gpuFamily, spec.socModel);
@@ -294,8 +492,6 @@ public class AIConfigEngine {
         if (game.dx >= 12) rec.dxWrapper = "dxvk+vkd3d";
         else rec.dxWrapper = "dxvk";
 
-        String dxvkVersion = pickDXVKVersion(game, spec);
-        String vkd3dVersion = pickVKD3DVersion(game, spec);
         rec.dxWrapperConfig = buildDXWrapperConfig(dxvkVersion, vkd3dVersion);
 
         if ("adreno".equals(spec.gpuFamily)) {
@@ -346,19 +542,6 @@ public class AIConfigEngine {
         if (rec.notes != null) sb.append("\nNote: ").append(rec.notes);
 
         rec.summary = sb.toString();
-        return rec;
-    }
-
-    public static Recommendation recommend(Context context, DeviceSpec spec, Game game) {
-        Recommendation rec = recommend(spec, game);
-        if ("adreno".equals(spec.gpuFamily)) {
-            String installed = resolveInstalledDriver(context, spec.gpuFamily, rec.gpuGeneration);
-            if (installed != null && !installed.isEmpty()) {
-                rec.graphicsDriverVersion = installed;
-                rec.graphicsDriverInstalled = true;
-                rec.summary = rec.summary.replace("(NOT installed)", "(installed)");
-            }
-        }
         return rec;
     }
 

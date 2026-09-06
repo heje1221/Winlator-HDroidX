@@ -180,10 +180,11 @@ public class AdrenotoolsManager {
             if (new File(tmpDir, "meta.json").exists()) {
                 name = getDriverName(tmpDir.getName());
                 File dst = new File(adrenotoolsContentDir, name);
-                if (!dst.exists() && !name.equals(""))
+                if (!name.equals("")) {
+                    FileUtils.delete(dst);
                     tmpDir.renameTo(dst);
+                }
                 else {
-                    name = "";
                     FileUtils.delete(tmpDir);
                 }
             }

@@ -95,6 +95,7 @@
     <string name="edit">Edit</string>
     <string name="ai_config">AI Config</string>
     <string name="ai_config_game">Game / Workload</string>
+    <string name="ai_config_download_drivers">Download / Update Graphics Drivers</string>
     <string name="remove">Remove</string>
     <string name="add">Add</string>
     <string name="shortcuts">Shortcuts</string>

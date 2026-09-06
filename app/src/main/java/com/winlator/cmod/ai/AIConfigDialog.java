@@ -71,6 +71,20 @@ public class AIConfigDialog extends ContentDialog {
 
         promptText = findViewById(R.id.TVAIPrompt);
 
+        android.widget.Button downloadBtn = findViewById(R.id.BTDriverDownload);
+        downloadBtn.setOnClickListener(v -> {
+            dismiss();
+            DriverDownloadDialog driverDialog = new DriverDownloadDialog(context,
+                    RepositoryManagerDialog.getStevenMxzRepo().apiUrl);
+            driverDialog.setOnDismissCallback(() -> {
+                String installed = driverDialog.getInstalledDriverName();
+                if (installed != null && !installed.isEmpty()) {
+                    AppUtils.showToast(getContext(), "Driver installed: " + installed);
+                }
+            });
+            driverDialog.show();
+        });
+
         gameSpinner.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(android.widget.AdapterView<?> parent, android.view.View view, int position, long id) {
@@ -106,6 +120,7 @@ public class AIConfigDialog extends ContentDialog {
 
         boolean driverNeeded = !lastRec.graphicsDriverVersion.isEmpty();
         boolean driverReady = driverNeeded && lastRec.graphicsDriverInstalled;
+        boolean wrapperReady = lastRec.dxWrapperReady;
 
         if (driverNeeded && !driverReady) {
             dismiss();
@@ -117,9 +132,8 @@ public class AIConfigDialog extends ContentDialog {
                 if (installed != null && !installed.isEmpty()) {
                     lastRec.graphicsDriverVersion = installed;
                     lastRec.graphicsDriverInstalled = true;
-                    applyNow();
-                    AppUtils.showToast(getContext(),
-                            "Driver installed: " + installed + ". AI Config applied!");
+                    if (!wrapperReady) autoInstallWrapperThenApply();
+                    else applyNow();
                 } else {
                     AppUtils.showToast(getContext(),
                             "Driver install failed. Check connection or pick manually.");
@@ -129,7 +143,52 @@ public class AIConfigDialog extends ContentDialog {
             return;
         }
 
+        if (!wrapperReady) {
+            dismiss();
+            autoInstallWrapperThenApply();
+            return;
+        }
+
         applyNow();
+    }
+
+    private void autoInstallWrapperThenApply() {
+        AppUtils.showToast(getContext(), "Auto-downloading best DXVK/VKD3D for this game...");
+
+        AIConfigEngine.autoInstallContent(context,
+                com.winlator.cmod.contents.ContentProfile.ContentType.CONTENT_TYPE_DXVK,
+                lastRec.dxvkVersion,
+                new AIConfigEngine.OnContentInstalledCallback() {
+                    @Override
+                    public void onInstalled(boolean dxvkOk, String dxvkMsg) {
+                        if (!dxvkOk) {
+                            AppUtils.showToast(getContext(),
+                                    "DXVK download failed: " + dxvkMsg + " - applying config anyway (bundled fallback).");
+                            applyNow();
+                            return;
+                        }
+                        if ("None".equals(lastRec.vkd3dVersion)) {
+                            lastRec.dxWrapperReady = true;
+                            AppUtils.showToast(getContext(),
+                                    "DXVK " + dxvkMsg + " installed. Applying AI config!");
+                            applyNow();
+                            return;
+                        }
+                        AIConfigEngine.autoInstallContent(context,
+                                com.winlator.cmod.contents.ContentProfile.ContentType.CONTENT_TYPE_VKD3D,
+                                lastRec.vkd3dVersion,
+                                new AIConfigEngine.OnContentInstalledCallback() {
+                                    @Override
+                                    public void onInstalled(boolean vkd3dOk, String vkd3dMsg) {
+                                        lastRec.dxWrapperReady = vkd3dOk;
+                                        AppUtils.showToast(getContext(),
+                                                vkd3dOk ? ("VKD3D " + vkd3dMsg + " installed. Applying AI config!")
+                                                        : ("VKD3D download failed: " + vkd3dMsg + " - applying anyway."));
+                                        applyNow();
+                                    }
+                                });
+                    }
+                });
     }
 
     private void applyNow() {
