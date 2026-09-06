@@ -28,6 +28,21 @@ jobs:
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
 
+    - name: Restore stable debug keystore (keeps APK signature across releases)
+      id: keystore-cache
+      uses: actions/cache@v4
+      with:
+        path: ~/.android/debug.keystore
+        key: winlator-hdroidx-debug-keystore-v1
+
+    - name: Ensure debug keystore exists
+      if: steps.keystore-cache.outputs.cache-hit != 'true'
+      run: |
+        mkdir -p "$HOME/.android"
+        keytool -genkeypair -v -keystore "$HOME/.android/debug.keystore" \
+          -alias androiddebugkey -storepass android -keypass android -keyalg RSA \
+          -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
+
     - name: Build with Gradle
       run: ./gradlew assembleDebug
 
