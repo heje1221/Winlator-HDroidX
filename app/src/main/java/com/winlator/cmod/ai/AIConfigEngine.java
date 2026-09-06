@@ -47,7 +47,7 @@ public class AIConfigEngine {
 
         public boolean matchesExe(String exeName) {
             if (exeName == null || exePatterns == null) return false;
-            String lower = exeName.toLowerCase(Locale.ROOT);
+            String lower = exeName.toLowerCase(Locale.ROOT).replace(" ", "");
             for (String p : exePatterns) {
                 if (lower.contains(p)) return true;
             }
@@ -122,12 +122,22 @@ public class AIConfigEngine {
                     "2.3.1", "None"),
     };
 
-    public static Game detectGame(String exeName) {
-        if (exeName == null) return null;
+    public static Game detectGame(String shortcutName, String exePath) {
+        StringBuilder sb = new StringBuilder();
+        if (shortcutName != null) sb.append(shortcutName);
+        if (exePath != null && !exePath.isEmpty()) {
+            if (sb.length() > 0) sb.append(" ");
+            sb.append(exePath);
+        }
+        if (sb.length() == 0) return null;
         for (Game game : GAMES) {
-            if (game.matchesExe(exeName)) return game;
+            if (game.matchesExe(sb.toString())) return game;
         }
         return null;
+    }
+
+    public static Game detectGame(String exeName) {
+        return detectGame(null, exeName);
     }
 
     public static DeviceSpec detect(Context context) {
@@ -282,7 +292,7 @@ public class AIConfigEngine {
         }
 
         if (game.dx >= 12) rec.dxWrapper = "dxvk+vkd3d";
-        else rec.dxWrapper = "dxvk+vkd3d";
+        else rec.dxWrapper = "dxvk";
 
         String dxvkVersion = pickDXVKVersion(game, spec);
         String vkd3dVersion = pickVKD3DVersion(game, spec);

@@ -28,7 +28,7 @@ public class AIConfigDialog extends ContentDialog {
         this.context = context;
         this.shortcut = shortcut;
         this.spec = AIConfigEngine.detect(context);
-        this.detectedGame = AIConfigEngine.detectGame(AIConfigEngine.exeNameOf(shortcut.path));
+        this.detectedGame = AIConfigEngine.detectGame(shortcut.name, shortcut.path);
         this.aiProfile = AIProfile.forShortcut(context, shortcut, shortcut.container);
 
         setTitle(R.string.ai_config);
@@ -37,9 +37,10 @@ public class AIConfigDialog extends ContentDialog {
         String detectLine = "Detected: " + spec.socName + " | " + spec.gpuFamily + " | "
                 + spec.ramMb + " MB RAM | " + spec.cores + " cores";
         if (detectedGame != null) {
-            detectLine += "\nGame found: " + detectedGame.name + " (" + AIConfigEngine.exeNameOf(shortcut.path) + ")";
+            detectLine += "\nGame found: " + detectedGame.name + " (" + shortcut.name + " -> "
+                    + AIConfigEngine.exeNameOf(shortcut.path) + ")";
         } else {
-            detectLine += "\nNo known game matched - pick below.";
+            detectLine += "\nNo known game matched - defaulted to Custom / General. Pick below.";
         }
         deviceInfo.setText(detectLine);
 
@@ -55,6 +56,13 @@ public class AIConfigDialog extends ContentDialog {
         if (detectedGame != null) {
             for (int i = 0; i < games.length; i++) {
                 if (games[i].name.equals(detectedGame.name)) {
+                    gameSpinner.setSelection(i);
+                    break;
+                }
+            }
+        } else {
+            for (int i = 0; i < games.length; i++) {
+                if (games[i].name.equals("Custom / General")) {
                     gameSpinner.setSelection(i);
                     break;
                 }
