@@ -1,32 +1,20 @@
 package com.winlator.cmod;
 
 import android.app.Activity;
-import android.app.AlertDialog;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
-import android.content.res.TypedArray;
 import android.graphics.Color;
-import android.hardware.Sensor;
-import android.hardware.SensorEvent;
-import android.hardware.SensorEventListener;
-import android.hardware.SensorManager;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
-import android.telecom.Call;
-import android.util.Log;
-import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.EditText;
-import android.widget.FrameLayout;
 import android.widget.LinearLayout;
-import android.widget.RadioButton;
-import android.widget.RadioGroup;
 import android.widget.SeekBar;
 import android.widget.Spinner;
 import android.widget.TextView;
@@ -50,20 +38,14 @@ import com.winlator.cmod.core.ArrayUtils;
 import com.winlator.cmod.core.Callback;
 import com.winlator.cmod.core.FileUtils;
 import com.winlator.cmod.core.PreloaderDialog;
-import com.winlator.cmod.core.TarCompressorUtils;
 import com.winlator.cmod.fexcore.FEXCoreEditPresetDialog;
 import com.winlator.cmod.fexcore.FEXCorePreset;
 import com.winlator.cmod.fexcore.FEXCorePresetManager;
-import com.winlator.cmod.inputcontrols.ControlElement;
-import com.winlator.cmod.inputcontrols.ExternalController;
-import com.winlator.cmod.inputcontrols.PreferenceKeys;
 import com.winlator.cmod.midi.MidiManager;
-import com.winlator.cmod.widget.InputControlsView;
 import com.winlator.cmod.xenvironment.ImageFsInstaller;
 
 import org.json.JSONArray;
 import org.json.JSONException;
-import org.w3c.dom.Text;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -71,9 +53,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.List;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 public class SettingsFragment extends Fragment {
     public static final String DEFAULT_WINE_DEBUG_CHANNELS = "warn,err,fixme";

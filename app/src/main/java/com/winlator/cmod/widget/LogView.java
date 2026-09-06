@@ -6,7 +6,6 @@ import android.graphics.Canvas;
 import android.graphics.Paint;
 import android.graphics.PointF;
 import android.net.Uri;
-import android.os.Environment;
 import android.text.format.DateFormat;
 import android.util.AttributeSet;
 import android.view.MotionEvent;

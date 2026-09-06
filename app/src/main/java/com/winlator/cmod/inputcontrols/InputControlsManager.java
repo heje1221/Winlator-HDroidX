@@ -5,7 +5,6 @@ import android.content.SharedPreferences;
 import android.content.res.AssetManager;
 import android.media.MediaScannerConnection;
 import android.net.Uri;
-import android.os.Environment;
 import android.util.JsonReader;
 
 import androidx.preference.PreferenceManager;

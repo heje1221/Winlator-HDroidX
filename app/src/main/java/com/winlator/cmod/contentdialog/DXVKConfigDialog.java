@@ -1,7 +1,6 @@
 package com.winlator.cmod.contentdialog;
 
 import android.content.Context;
-import android.util.Log;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
@@ -20,7 +19,6 @@ import com.winlator.cmod.core.StringUtils;
 import com.winlator.cmod.core.VKD3DVersionItem;
 import com.winlator.cmod.xenvironment.ImageFs;
 
-import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;

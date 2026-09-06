@@ -20,7 +20,6 @@ import com.winlator.cmod.MainActivity;
 import com.winlator.cmod.R;
 import com.winlator.cmod.core.AppUtils;
 import com.winlator.cmod.core.FileUtils;
-import com.winlator.cmod.core.ImageUtils;
 import com.winlator.cmod.core.UnitUtils;
 import com.winlator.cmod.core.WineThemeManager;
 

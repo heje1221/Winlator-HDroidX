@@ -1,7 +1,6 @@
 package com.winlator.cmod.contentdialog;
 
 import android.content.Context;
-import android.os.Build;
 import android.util.Log;
 import android.view.View;
 import android.widget.AdapterView;
@@ -22,7 +21,6 @@ import com.winlator.cmod.core.StringUtils;
 import com.winlator.cmod.widget.MultiSelectionComboBox;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.HashMap;
 import java.util.Map;

@@ -19,11 +19,9 @@ import com.winlator.cmod.core.Callback;
 import com.winlator.cmod.core.EnvVars;
 import com.winlator.cmod.core.FileUtils;
 import com.winlator.cmod.core.GPUInformation;
-import com.winlator.cmod.core.KeyValueSet;
 import com.winlator.cmod.core.ProcessHelper;
 import com.winlator.cmod.core.TarCompressorUtils;
 import com.winlator.cmod.core.WineInfo;
-import com.winlator.cmod.fexcore.FEXCoreManager;
 import com.winlator.cmod.fexcore.FEXCorePreset;
 import com.winlator.cmod.fexcore.FEXCorePresetManager;
 import com.winlator.cmod.xconnector.UnixSocketConfig;
@@ -32,15 +30,8 @@ import com.winlator.cmod.xenvironment.ImageFs;
 
 import java.io.BufferedReader;
 import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.InetAddress;
-import java.net.URL;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 
 public class GuestProgramLauncherComponent extends EnvironmentComponent {

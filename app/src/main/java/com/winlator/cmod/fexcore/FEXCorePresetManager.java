@@ -24,7 +24,6 @@ import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Iterator;
-import java.util.Locale;
 
 public class FEXCorePresetManager {
     public static EnvVars getEnvVars(Context context, String id) {

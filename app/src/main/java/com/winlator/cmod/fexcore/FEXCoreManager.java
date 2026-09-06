@@ -9,8 +9,6 @@ import android.widget.Spinner;
 import com.winlator.cmod.contents.ContentProfile;
 import com.winlator.cmod.contents.ContentsManager;
 import com.winlator.cmod.core.AppUtils;
-import com.winlator.cmod.core.EnvVars;
-import com.winlator.cmod.core.KeyValueSet;
 
 import java.util.ArrayList;
 import java.util.Arrays;

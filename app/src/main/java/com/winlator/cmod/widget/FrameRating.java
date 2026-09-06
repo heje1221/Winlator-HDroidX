@@ -16,8 +16,6 @@ import android.widget.TextView;
 
 import com.winlator.cmod.R;
 import com.winlator.cmod.ai.AIProfile;
-import com.winlator.cmod.container.Container;
-import com.winlator.cmod.container.Shortcut;
 import com.winlator.cmod.core.GPUInformation;
 import com.winlator.cmod.core.StringUtils;
 import com.winlator.cmod.xenvironment.components.GuestProgramLauncherComponent;

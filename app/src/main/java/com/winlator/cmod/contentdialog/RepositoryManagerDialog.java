@@ -11,7 +11,6 @@ import android.widget.PopupMenu;
 import android.widget.TextView;
 import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
-import android.widget.Toast;
 
 import androidx.appcompat.app.AlertDialog;
 import androidx.preference.PreferenceManager;
@@ -20,8 +19,6 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.winlator.cmod.R;
 import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
 
 import java.util.ArrayList;
 import java.util.List;
