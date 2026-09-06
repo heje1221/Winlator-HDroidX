@@ -2,6 +2,7 @@ package com.winlator.cmod.contentdialog;
 
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.graphics.Color;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -9,10 +10,9 @@ import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.PopupMenu;
 import android.widget.TextView;
-import android.graphics.Color;
-import android.graphics.drawable.ColorDrawable;
 
 import androidx.appcompat.app.AlertDialog;
+import androidx.core.content.ContextCompat;
 import androidx.preference.PreferenceManager;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -45,7 +45,6 @@ public class RepositoryManagerDialog {
         builder.setTitle("Driver Sources"); // English
 
         recyclerView = new RecyclerView(context);
-        recyclerView.setBackgroundColor(Color.BLACK);
         recyclerView.setLayoutManager(new LinearLayoutManager(context));
         recyclerView.setPadding(0, 10, 0, 10);
 
@@ -59,7 +58,7 @@ public class RepositoryManagerDialog {
 
         dialog = builder.create();
         dialog.show();
-        if (dialog.getWindow() != null) dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.BLACK));
+        if (dialog.getWindow() != null) dialog.getWindow().setBackgroundDrawable(ContextCompat.getDrawable(context, isDarkMode() ? R.drawable.content_dialog_background_dark : R.drawable.content_dialog_background));
     }
 
     
@@ -171,8 +170,8 @@ public class RepositoryManagerDialog {
         public void onBindViewHolder(ViewHolder holder, int position) {
             DriverRepo repo = repos.get(position);
             holder.title.setText(repo.name);
-            holder.title.setTextColor(Color.WHITE);
-            holder.subtitle.setTextColor(Color.parseColor("#AAAAAA"));
+            holder.title.setTextColor(isDarkMode() ? Color.WHITE : Color.BLACK);
+            holder.subtitle.setTextColor(isDarkMode() ? Color.parseColor("#AAAAAA") : Color.parseColor("#555555"));
             
             
             holder.actionButton.setImageResource(android.R.drawable.ic_menu_manage);
@@ -217,5 +216,9 @@ public class RepositoryManagerDialog {
                 actionButton = v.findViewById(R.id.BTMenu);
             }
         }
+    }
+
+    private boolean isDarkMode() {
+        return PreferenceManager.getDefaultSharedPreferences(context).getBoolean("dark_mode", false);
     }
 }

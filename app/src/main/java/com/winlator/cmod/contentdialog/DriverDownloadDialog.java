@@ -3,7 +3,6 @@ package com.winlator.cmod.contentdialog;
 import android.app.Activity;
 import android.content.Context;
 import android.graphics.Color;
-import android.graphics.drawable.ColorDrawable;
 import android.net.Uri;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -13,6 +12,8 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AlertDialog;
+import androidx.core.content.ContextCompat;
+import androidx.preference.PreferenceManager;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -64,7 +65,6 @@ public class DriverDownloadDialog {
         builder.setTitle("Available Drivers"); // English
 
         recyclerView = new RecyclerView(context);
-        recyclerView.setBackgroundColor(Color.BLACK);
         recyclerView.setLayoutManager(new LinearLayoutManager(context));
 
         builder.setView(recyclerView);
@@ -72,7 +72,7 @@ public class DriverDownloadDialog {
 
         dialog = builder.create();
         dialog.show();
-        if (dialog.getWindow() != null) dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.BLACK));
+        if (dialog.getWindow() != null) dialog.getWindow().setBackgroundDrawable(ContextCompat.getDrawable(context, isDarkMode() ? R.drawable.content_dialog_background_dark : R.drawable.content_dialog_background));
 
         if (targetAutoVersion != null && !targetAutoVersion.isEmpty()) {
             autoDownloadAndInstall(targetAutoVersion);
@@ -403,8 +403,8 @@ public class DriverDownloadDialog {
             
             
             holder.title.setText(item.name);
-            holder.title.setTextColor(Color.WHITE);
-            holder.subtitle.setTextColor(Color.parseColor("#AAAAAA"));
+            holder.title.setTextColor(isDarkMode() ? Color.WHITE : Color.BLACK);
+            holder.subtitle.setTextColor(isDarkMode() ? Color.parseColor("#AAAAAA") : Color.parseColor("#555555"));
             
             
             if (item.assets.size() > 1) {
@@ -438,5 +438,9 @@ public class DriverDownloadDialog {
 
     private void runOnUi(Runnable action) {
         if (context instanceof Activity) ((Activity) context).runOnUiThread(action);
+    }
+
+    private boolean isDarkMode() {
+        return PreferenceManager.getDefaultSharedPreferences(context).getBoolean("dark_mode", false);
     }
 }
