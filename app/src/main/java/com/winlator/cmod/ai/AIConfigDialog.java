@@ -101,7 +101,7 @@ public class AIConfigDialog extends ContentDialog {
 
     private void updateSummary(int position) {
         AIConfigEngine.Game game = AIConfigEngine.GAMES[position];
-        lastRec = AIConfigEngine.recommend(context, spec, game);
+        lastRec = AIConfigEngine.recommend(context, spec, game, AIConfigEngine.exeNameOf(shortcut.path));
         AIConfigEngine.tuneFromProfile(lastRec, aiProfile);
 
         TextView summaryText = findViewById(R.id.TVAIRecSummary);
@@ -116,45 +116,11 @@ public class AIConfigDialog extends ContentDialog {
     }
 
     private void applyConfig() {
-        if (lastRec == null) return;
-
-        boolean driverNeeded = !lastRec.graphicsDriverVersion.isEmpty();
-        boolean driverReady = driverNeeded && lastRec.graphicsDriverInstalled;
-        boolean wrapperReady = lastRec.dxWrapperReady;
-
-        if (driverNeeded && !driverReady) {
-            dismiss();
-            DriverDownloadDialog driverDialog = new DriverDownloadDialog(context,
-                    RepositoryManagerDialog.getStevenMxzRepo().apiUrl);
-            driverDialog.autoInstall(lastRec.graphicsDriverVersion, lastRec.gpuGeneration);
-            driverDialog.setOnDismissCallback(() -> {
-                String installed = driverDialog.getInstalledDriverName();
-                if (installed != null && !installed.isEmpty()) {
-                    lastRec.graphicsDriverVersion = installed;
-                    lastRec.graphicsDriverInstalled = true;
-                    if (!wrapperReady) autoInstallWrapperThenApply();
-                    else applyNow();
-                } else {
-                    AppUtils.showToast(getContext(),
-                            "Driver install failed. Check connection or pick manually.");
-                }
-            });
-            driverDialog.show();
-            return;
-        }
-
-        if (!wrapperReady) {
-            dismiss();
-            autoInstallWrapperThenApply();
-            return;
-        }
-
         applyNow();
     }
 
     private void autoInstallWrapperThenApply() {
-        AppUtils.showToast(getContext(), "Auto-downloading best DXVK/VKD3D for this game...");
-
+        // Silent - no toasts
         AIConfigEngine.autoInstallContent(context,
                 com.winlator.cmod.contents.ContentProfile.ContentType.CONTENT_TYPE_DXVK,
                 lastRec.dxvkVersion,
@@ -162,15 +128,11 @@ public class AIConfigDialog extends ContentDialog {
                     @Override
                     public void onInstalled(boolean dxvkOk, String dxvkMsg) {
                         if (!dxvkOk) {
-                            AppUtils.showToast(getContext(),
-                                    "DXVK download failed: " + dxvkMsg + " - applying config anyway (bundled fallback).");
                             applyNow();
                             return;
                         }
                         if ("None".equals(lastRec.vkd3dVersion)) {
                             lastRec.dxWrapperReady = true;
-                            AppUtils.showToast(getContext(),
-                                    "DXVK " + dxvkMsg + " installed. Applying AI config!");
                             applyNow();
                             return;
                         }
@@ -181,9 +143,6 @@ public class AIConfigDialog extends ContentDialog {
                                     @Override
                                     public void onInstalled(boolean vkd3dOk, String vkd3dMsg) {
                                         lastRec.dxWrapperReady = vkd3dOk;
-                                        AppUtils.showToast(getContext(),
-                                                vkd3dOk ? ("VKD3D " + vkd3dMsg + " installed. Applying AI config!")
-                                                        : ("VKD3D download failed: " + vkd3dMsg + " - applying anyway."));
                                         applyNow();
                                     }
                                 });
@@ -211,11 +170,58 @@ public class AIConfigDialog extends ContentDialog {
         }
         shortcut.saveData();
 
-        AppUtils.showToast(getContext(),
-                "AI Config applied: " + lastRec.resolution + " | " + lastRec.cpuList + " | " + lastRec.box64Name);
+        // Silent - no toast
     }
 
     private String setDriverVersion(String config, String version) {
+        if (config == null || config.isEmpty()) return "version=" + version;
+        String[] parts = config.split(";");
+        boolean replaced = false;
+        StringBuilder sb = new StringBuilder();
+        for (String part : parts) {
+            if (sb.length() > 0) sb.append(";");
+            if (part.startsWith("version=")) {
+                sb.append("version=").append(version);
+                replaced = true;
+            } else {
+                sb.append(part);
+            }
+        }
+        if (!replaced) sb.append(";version=").append(version);
+        return sb.toString();
+    }
+
+    // Zero-Friction: static method for silent auto-apply on game launch
+    public static void applyAutoConfig(Context context, Shortcut shortcut) {
+        if (context == null || shortcut == null) return;
+        AIConfigEngine.DeviceSpec spec = AIConfigEngine.detect(context);
+        AIConfigEngine.Game game = AIConfigEngine.detectGame(shortcut.name, shortcut.path);
+        if (game == null) game = AIConfigEngine.GAMES[AIConfigEngine.GAMES.length - 1]; // Custom/General
+        String exeName = AIConfigEngine.exeNameOf(shortcut.path);
+        AIProfile aiProfile = AIProfile.forShortcut(context, shortcut, shortcut.container);
+        
+        AIConfigEngine.Recommendation rec = AIConfigEngine.recommend(context, spec, game, exeName);
+        AIConfigEngine.tuneFromProfile(rec, aiProfile);
+        
+        // Apply directly to shortcut Extra Data
+        shortcut.putExtra("screenSize", rec.resolution);
+        shortcut.putExtra("box64Preset", rec.box64Preset);
+        shortcut.putExtra("cpuList", rec.cpuList);
+        if (rec.dxWrapper != null && !rec.dxWrapper.isEmpty()) {
+            shortcut.putExtra("dxwrapper", rec.dxWrapper);
+        }
+        if (rec.dxWrapperConfig != null && !rec.dxWrapperConfig.isEmpty()) {
+            shortcut.putExtra("dxwrapperConfig", rec.dxWrapperConfig);
+        }
+        if (!rec.graphicsDriverVersion.isEmpty()) {
+            shortcut.putExtra("graphicsDriverConfig", setDriverVersionStatic(
+                    shortcut.getExtra("graphicsDriverConfig", shortcut.container.getGraphicsDriverConfig()),
+                    rec.graphicsDriverVersion));
+        }
+        shortcut.saveData();
+    }
+    
+    private static String setDriverVersionStatic(String config, String version) {
         if (config == null || config.isEmpty()) return "version=" + version;
         String[] parts = config.split(";");
         boolean replaced = false;

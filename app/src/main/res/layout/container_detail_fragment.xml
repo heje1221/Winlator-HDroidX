@@ -151,6 +151,11 @@
                     android:id="@+id/BTGraphicsDriverConfig"
                     android:src="@drawable/icon_settings"
                     android:visibility="gone" />
+
+                <ImageButton
+                    style="@style/ListMenuButton"
+                    android:id="@+id/BTDriverDownload"
+                    android:src="@drawable/ic_download" />
             </LinearLayout>
 
             <LinearLayout

@@ -96,6 +96,25 @@ public class AIConfigEngine {
     };
 
     public static final String ADRENO_DRIVER_VERSION = "turnip26.2.0";
+    
+    // Stable Driver Mapping: game-specific tested Turnip versions (avoid driver regression)
+    // Gold Standard fallback: turnip24.1.0 (proven stable, low RAM, high FPS on Adreno 7xx)
+    public static final String GOLD_STANDARD_TURNIP = "turnip24.1.0";
+    
+    private static final java.util.Map<String, String> TESTED_TURNIP_PER_GAME = new java.util.HashMap<>();
+    static {
+        TESTED_TURNIP_PER_GAME.put("jump_force.exe", "turnip24.1.0");
+        TESTED_TURNIP_PER_GAME.put("jump_force_steam.exe", "turnip24.1.0");
+        TESTED_TURNIP_PER_GAME.put("re3.exe", "turnip24.1.0");
+        TESTED_TURNIP_PER_GAME.put("re7.exe", "turnip23.3.0");
+        TESTED_TURNIP_PER_GAME.put("re8.exe", "turnip24.1.0");
+        TESTED_TURNIP_PER_GAME.put("gta5.exe", "turnip24.1.0");
+        TESTED_TURNIP_PER_GAME.put("gtav.exe", "turnip24.1.0");
+        TESTED_TURNIP_PER_GAME.put("gtaiv.exe", "turnip25.1.0");
+        TESTED_TURNIP_PER_GAME.put("gta4.exe", "turnip25.1.0");
+        TESTED_TURNIP_PER_GAME.put("l4d2.exe", "turnip24.1.0");
+        TESTED_TURNIP_PER_GAME.put("terminal64.exe", "turnip24.1.0");
+    }
 
     public static final Game[] GAMES = {
             new Game("Jump Force", new String[]{"jump"}, 11, "medium", "800x600",
@@ -198,6 +217,10 @@ public class AIConfigEngine {
     }
 
     public static String resolveInstalledDriver(Context context, String gpuFamily, String gpuGeneration) {
+        return resolveInstalledDriver(context, gpuFamily, gpuGeneration, null);
+    }
+    
+    public static String resolveInstalledDriver(Context context, String gpuFamily, String gpuGeneration, String exeName) {
         if (!"adreno".equals(gpuFamily)) return "";
         List<String> installed = null;
         try {
@@ -205,6 +228,21 @@ public class AIConfigEngine {
         } catch (Throwable t) {
             t.printStackTrace();
         }
+        
+        // 1. Game-specific tested Turnip version
+        if (exeName != null && !exeName.isEmpty()) {
+            String tested = TESTED_TURNIP_PER_GAME.get(exeName.toLowerCase());
+            if (tested != null && installed != null && installed.contains(tested)) {
+                return tested;
+            }
+        }
+        
+        // 2. Gold Standard fallback
+        if (installed != null && installed.contains(GOLD_STANDARD_TURNIP)) {
+            return GOLD_STANDARD_TURNIP;
+        }
+        
+        // 3. Highest compatible installed version
         if (installed != null) {
             String best = "";
             for (String id : installed) {
@@ -216,6 +254,8 @@ public class AIConfigEngine {
             if (!best.isEmpty()) return best;
             if (!installed.isEmpty()) return installed.get(0);
         }
+        
+        // 4. System fallback
         try {
             if (GPUInformation.isDriverSupported(DefaultVersion.WRAPPER_ADRENO, context))
                 return DefaultVersion.WRAPPER_ADRENO;
@@ -310,6 +350,10 @@ public class AIConfigEngine {
     }
 
     public static Recommendation recommend(Context context, DeviceSpec spec, Game game) {
+        return recommend(context, spec, game, null);
+    }
+    
+    public static Recommendation recommend(Context context, DeviceSpec spec, Game game, String exeName) {
         String dxvkVersion = pickInstalledVersion(context, ContentProfile.ContentType.CONTENT_TYPE_DXVK);
         if (dxvkVersion == null) dxvkVersion = defaultDXVKVersion(game, spec);
         String vkd3dVersion = pickInstalledVersion(context, ContentProfile.ContentType.CONTENT_TYPE_VKD3D);
@@ -328,9 +372,11 @@ public class AIConfigEngine {
         }
 
         if ("adreno".equals(spec.gpuFamily)) {
-            String installed = resolveInstalledDriver(context, spec.gpuFamily, rec.gpuGeneration);
-            rec.graphicsDriverVersion = ADRENO_DRIVER_VERSION;
-            rec.graphicsDriverInstalled = installedDriverReady(installed, ADRENO_DRIVER_VERSION);
+            String installed = resolveInstalledDriver(context, spec.gpuFamily, rec.gpuGeneration, exeName);
+            // Use the resolved stable driver version, not hardcoded latest
+            String targetDriver = installed.isEmpty() ? GOLD_STANDARD_TURNIP : installed;
+            rec.graphicsDriverVersion = targetDriver;
+            rec.graphicsDriverInstalled = installedDriverReady(installed, targetDriver);
             rec.summary = rec.summary.replace("(NOT installed)",
                     rec.graphicsDriverInstalled ? "(installed)" : "(NOT installed - auto-download on Apply)");
         }

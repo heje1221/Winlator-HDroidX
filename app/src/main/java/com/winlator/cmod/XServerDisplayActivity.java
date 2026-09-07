@@ -1470,6 +1470,16 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
 
     private void extractGraphicsDriverFiles() {
         String adrenoToolsDriverId = graphicsDriverConfig.get("version");
+        
+        // Normalize driver ID: strip "Turnip " prefix and convert to ID format
+        if (adrenoToolsDriverId != null) {
+            adrenoToolsDriverId = adrenoToolsDriverId.replace("Turnip ", "").replace("turnip ", "");
+            // Convert "Turnip v26.2.0-R8" to "turnip26.2.0" (drop "- suffix")
+            if (adrenoToolsDriverId.startsWith("v")) {
+                String ver = adrenoToolsDriverId.substring(1).split("-")[0];  // take version part before any suffix
+                adrenoToolsDriverId = "turnip" + ver;
+            }
+        }
 
         Log.d("GraphicsDriverExtraction", "Adrenotools DriverID: " + adrenoToolsDriverId);
 
@@ -1497,51 +1507,69 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
                 TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, "graphics_driver/zink_dlls" + ".tzst", new File(rootDir, imageFs.WINEPREFIX + "/drive_c/windows"));
         }
 
-        if (adrenoToolsDriverId != "System") {
+        if (adrenoToolsDriverId != null && !adrenoToolsDriverId.equals("System")) {
             AdrenotoolsManager adrenotoolsManager = new AdrenotoolsManager(this);
             adrenotoolsManager.setDriverById(envVars, imageFs, adrenoToolsDriverId);
         }
 
         String vulkanVersion = graphicsDriverConfig.get("vulkanVersion");
-        String vulkanVersionPatch = GPUInformation.getVulkanVersion(adrenoToolsDriverId, this).split("\\.")[2];
-        vulkanVersion = vulkanVersion + "." + vulkanVersionPatch;
+        if (vulkanVersion == null) vulkanVersion = "1.3";
+        try {
+            String vulkanVersionPatch = GPUInformation.getVulkanVersion(adrenoToolsDriverId, this).split("\\.")[2];
+            vulkanVersion = vulkanVersion + "." + vulkanVersionPatch;
+        } catch (Exception e) {
+            Log.w("GraphicsDriverExtraction", "Failed to get Vulkan version patch, using default: " + e.getMessage());
+        }
         envVars.put("WRAPPER_VK_VERSION", vulkanVersion);
 
         String blacklistedExtensions = graphicsDriverConfig.get("blacklistedExtensions");
-        envVars.put("WRAPPER_EXTENSION_BLACKLIST", blacklistedExtensions);
+        if (blacklistedExtensions != null)
+            envVars.put("WRAPPER_EXTENSION_BLACKLIST", blacklistedExtensions);
 
         String maxDeviceMemory = graphicsDriverConfig.get("maxDeviceMemory");
         if (maxDeviceMemory != null && Integer.parseInt(maxDeviceMemory) > 0)
             envVars.put("WRAPPER_VMEM_MAX_SIZE", maxDeviceMemory);
         
         String presentMode = graphicsDriverConfig.get("presentMode");
-        envVars.put("MESA_VK_WSI_PRESENT_MODE", presentMode);
+        if (presentMode != null)
+            envVars.put("MESA_VK_WSI_PRESENT_MODE", presentMode);
 
         String resourceType = graphicsDriverConfig.get("resourceType");
-        envVars.put("WRAPPER_RESOURCE_TYPE", resourceType);
+        if (resourceType != null)
+            envVars.put("WRAPPER_RESOURCE_TYPE", resourceType);
 
         String syncFrame = graphicsDriverConfig.get("syncFrame");
-        if (syncFrame.equals("1"))
+        if ("1".equals(syncFrame))
             envVars.put("MESA_VK_WSI_DEBUG", "forcesync");
 
         String disablePresentWait = graphicsDriverConfig.get("disablePresentWait");
-        envVars.put("WRAPPER_DISABLE_PRESENT_WAIT", disablePresentWait);
+        if (disablePresentWait != null)
+            envVars.put("WRAPPER_DISABLE_PRESENT_WAIT", disablePresentWait);
 
         String bcnEmulation = graphicsDriverConfig.get("bcnEmulation");
-        switch (bcnEmulation) {
-            case "auto" -> envVars.put("WRAPPER_EMULATE_BCN", "3");
-            case "full" -> envVars.put("WRAPPER_EMULATE_BCN", "2");
-            case "none" -> envVars.put("WRAPPER_EMULATE_BCN", "0");
-            default -> envVars.put("WRAPPER_EMULATE_BCN", "1");
+        if (bcnEmulation != null) {
+            switch (bcnEmulation) {
+                case "auto" -> envVars.put("WRAPPER_EMULATE_BCN", "3");
+                case "full" -> envVars.put("WRAPPER_EMULATE_BCN", "2");
+                case "none" -> envVars.put("WRAPPER_EMULATE_BCN", "0");
+                default -> envVars.put("WRAPPER_EMULATE_BCN", "1");
+            }
         }
 
         String bcnEmulationCache = graphicsDriverConfig.get("bcnEmulationType");
-        envVars.put("WRAPPER_USE_BCN_CACHE", bcnEmulationCache);
+        if (bcnEmulationCache != null)
+            envVars.put("WRAPPER_USE_BCN_CACHE", bcnEmulationCache);
 
         if (!vkbasaltConfig.isEmpty()) {
             envVars.put("ENABLE_VKBASALT", "1");
             envVars.put("VKBASALT_CONFIG", vkbasaltConfig);
         }
+        
+        // Memory Guard: prevent RAM leaks and OOM kills
+        envVars.put("DXVK_STATE_CACHE", "0");
+        envVars.put("dxgi.maxDeviceMemory", "2048");
+        envVars.put("VKD3D_CONFIG", "multi_queue");
+        envVars.put("MESA_GLTHREAD", "true");
     }
 
     @Override

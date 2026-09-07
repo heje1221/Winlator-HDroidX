@@ -39,8 +39,10 @@ import com.winlator.cmod.container.Container;
 import com.winlator.cmod.container.ContainerManager;
 import com.winlator.cmod.contentdialog.AddEnvVarDialog;
 import com.winlator.cmod.contentdialog.ContentDialog;
+import com.winlator.cmod.contentdialog.DriverDownloadDialog;
 import com.winlator.cmod.contentdialog.DXVKConfigDialog;
 import com.winlator.cmod.contentdialog.GraphicsDriverConfigDialog;
+import com.winlator.cmod.contentdialog.RepositoryManagerDialog;
 import com.winlator.cmod.contentdialog.ShortcutSettingsDialog;
 import com.winlator.cmod.contentdialog.WineD3DConfigDialog;
 import com.winlator.cmod.contents.ContentProfile;
@@ -332,6 +334,18 @@ public class ContainerDetailFragment extends Fragment {
 
         final View vGraphicsDriverConfig = view.findViewById(R.id.BTGraphicsDriverConfig);
         vGraphicsDriverConfig.setTag(isEditMode() ? container.getGraphicsDriverConfig() : Container.DEFAULT_GRAPHICSDRIVERCONFIG);
+
+        view.findViewById(R.id.BTDriverDownload).setOnClickListener((v) -> {
+            DriverDownloadDialog driverDialog = new DriverDownloadDialog(context,
+                    RepositoryManagerDialog.getStevenMxzRepo().apiUrl);
+            driverDialog.setOnDismissCallback(() -> {
+                String installed = driverDialog.getInstalledDriverName();
+                if (installed != null && !installed.isEmpty()) {
+                    Toast.makeText(context, "Driver installed: " + installed, Toast.LENGTH_LONG).show();
+                }
+            });
+            driverDialog.show();
+        });
 
         loadGraphicsDriverSpinner(sGraphicsDriver, sDXWrapper, vGraphicsDriverConfig,
                 isEditMode() ? container.getGraphicsDriver() : Container.DEFAULT_GRAPHICS_DRIVER,
