@@ -300,11 +300,21 @@ android {
 
     // Keep Winlator’s buildTypes
 
+    signingConfigs {
+        debug {
+            storeFile file('../keystore/debug.keystore')
+            storePassword 'android'
+            keyAlias 'androiddebugkey'
+            keyPassword 'android'
+        }
+    }
+
     buildTypes {
 
         debug {
 
             minifyEnabled false
+            signingConfig signingConfigs.debug
 
         }
 
